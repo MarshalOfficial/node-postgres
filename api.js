@@ -1,48 +1,61 @@
-const inMemoryHorrors = [
-  {
-    name: "The Hills Have Eyes",
-    rating: 7.8,
-  },
-  {
-    name: "Night of the Living Dead",
-    rating: 9.0,
-  },
-  {
-    name: "Scream",
-    rating: 7.2,
-  },
-];
+const Pool = require("pg").Pool;
+const secrets = require("./secrets");
 
-const getAllHorrors = async (request, response) => {
-  response.status(200).json(inMemoryHorrors);
+const pool = new Pool({
+  user: secrets.DBUser,
+  host: secrets.DBServer,
+  database: "movies",
+  password: secrets.DBPass,
+  port: secrets.DBPort,
+});
+
+const getAllHorrors = async (request, response) => {  
+  pool.query("SELECT * FROM horrors ORDER BY rating ASC", (error, results) => {
+    response.status(200).json(results.rows);
+  });
 };
 
 const getHorrorById = (request, response) => {
-  response.status(200).json(inMemoryHorrors[0]);
+  const id = parseInt(request.params.id);
+  pool.query("SELECT * FROM horrors WHERE id = $1", [id], (error, results) => {
+    response.status(200).json(results.rows);
+  });
 };
 
 const addHorror = async (request, response) => {
   const { name, rating } = request.body;
-  inMemoryHorrors.push({ name, rating });
-  response.status(201).send(`Horror added successfully.`);
+  pool.query(
+    "INSERT INTO horrors (name, rating) VALUES ($1, $2)",
+    [name, rating],
+    (error, results) => {
+      response.status(201).send(`Horror added successfully.`);
+    }
+  );
 };
 
 const updateHorror = (request, response) => {
+  const id = parseInt(request.params.id);
   const { name, rating } = request.body;
-  inMemoryHorrors[0] = { name, rating };
-  response.status(200).send(`First horror in list is updated.`);
+  pool.query(
+    "UPDATE horrors SET name = $1, rating = $2 WHERE id = $3",
+    [name, rating, id],
+    (error, results) => {
+      response.status(200).send(`Horror with id ${id} modified.`);
+    }
+  );
 };
 
 const deleteHorror = (request, response) => {
-  inMemoryHorrors.shift();
-  response.status(200).send(`First horror in list is deleted.`);
+  const id = parseInt(request.params.id);
+  pool.query("DELETE FROM horrors WHERE id = $1", [id], (error, results) => {
+    response.status(200).send(`Horror with id ${id} deleted.`);
+  });
 };
 
-
 module.exports = {
-    getAllHorrors,
-    getHorrorById,
-    addHorror,
-    updateHorror,
-    deleteHorror
-  };
+  getAllHorrors,
+  getHorrorById,
+  addHorror,
+  updateHorror,
+  deleteHorror,
+};
